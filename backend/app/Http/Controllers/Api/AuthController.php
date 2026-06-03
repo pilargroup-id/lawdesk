@@ -32,10 +32,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $deviceName = $request->header('User-Agent') ?? 'unknown';
-        $token = $user->createToken($deviceName)->plainTextToken;
-        $user->remember_token = $token;
-        $user->save();
+        $token = \Tymon\JWTAuth\Facades\JWTAuth::fromUser($user);
 
         return response()->json([
             'message'      => 'Login successful',
@@ -78,10 +75,15 @@ public function approveUser($id)
 
     public function logout(Request $request)
     {
-        $user = $request->user();
-        $user->tokens()->delete();
-        $user->remember_token = null;
-        $user->save();
+        try {
+            \Tymon\JWTAuth\Facades\JWTAuth::invalidate(\Tymon\JWTAuth\Facades\JWTAuth::getToken());
+        } catch (\Exception $e) {
+            // Ignore if token is already invalid
+        }
+        if ($user = $request->user()) {
+            $user->remember_token = null;
+            $user->save();
+        }
 
         return response()->json([
             'message' => 'Logout successful',
@@ -121,9 +123,7 @@ public function approveUser($id)
             return response()->json(['message' => 'User not found in database'], 404);
         }
 
-        $token = $user->createToken('dev-mock')->plainTextToken;
-        $user->remember_token = $token;
-        $user->save();
+        $token = \Tymon\JWTAuth\Facades\JWTAuth::fromUser($user);
 
         return response()->json([
             'access_token' => $token,

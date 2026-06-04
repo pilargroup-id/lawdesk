@@ -266,11 +266,27 @@ class TicketController extends Controller
             ]);
         }
 
-        if ($status === 'void') {
-            if (empty($data['notes'])) {
-                return response()->json(['message' => 'notes wajib untuk VOID'], 422);
+        if ($status === 'hold') {
+            $updateData = ['status' => 'hold'];
+            if (!empty($data['reason'])) {
+                $updateData['notes'] = $data['reason'];
             }
-            $ticket->update(['status' => 'void', 'notes' => $data['notes']]);
+            if (!empty($data['notes'])) {
+                $updateData['notes'] = $data['notes'];
+            }
+            $ticket->update($updateData);
+            return response()->json([
+                'message' => 'Ticket updated successfully by admin',
+                'data'    => new TicketResource($ticket->fresh()->load(['category', 'assets'])),
+            ]);
+        }
+
+        if ($status === 'void') {
+            $updateData = ['status' => 'void'];
+            if (!empty($data['notes'])) {
+                $updateData['notes'] = $data['notes'];
+            }
+            $ticket->update($updateData);
             return response()->json([
                 'message' => 'Ticket updated successfully by admin',
                 'data'    => new TicketResource($ticket->fresh()->load(['category', 'assets'])),
@@ -278,17 +294,20 @@ class TicketController extends Controller
         }
 
         if ($status === 'in_progress') {
-            if (empty($data['support_id']))   return response()->json(['message' => 'support_id wajib'], 422);
-            if (empty($data['support_name'])) return response()->json(['message' => 'support_name wajib'], 422);
-            if (empty($data['priority']))     return response()->json(['message' => 'priority wajib'], 422);
-
             $payload = [
-                'status'       => 'in_progress',
-                'support_id'   => $data['support_id'],
-                'support_name' => $data['support_name'],
-                'priority'     => $data['priority'],
-                'is_late'      => 0,
+                'status'  => 'in_progress',
+                'is_late' => 0,
             ];
+
+            if (!empty($data['support_id'])) {
+                $payload['support_id'] = $data['support_id'];
+                $supportUser = \App\Models\User::find($data['support_id']);
+                $payload['support_name'] = $supportUser?->name ?? ($data['support_name'] ?? $ticket->support_name);
+            }
+
+            if (!empty($data['priority'])) {
+                $payload['priority'] = $data['priority'];
+            }
 
             if (array_key_exists('progres_percent', $data)) {
                 $payload['progres_percent'] = (int) $data['progres_percent'];
@@ -318,11 +337,7 @@ class TicketController extends Controller
         }
 
         if ($status === 'resolved') {
-            if (empty($data['solution']))     return response()->json(['message' => 'solution wajib'], 422);
-            if (empty($data['support_id']))   return response()->json(['message' => 'support_id wajib'], 422);
-            if (empty($data['support_name'])) return response()->json(['message' => 'support_name wajib'], 422);
-            if (empty($data['priority']))     return response()->json(['message' => 'priority wajib'], 422);
-
+            // Pastikan ada start_date
             if (!empty($data['start_date'])) {
                 $ticket->update(['start_date' => $this->parseInputDate($data['start_date'])]);
                 $ticket = $ticket->fresh();
@@ -353,20 +368,25 @@ class TicketController extends Controller
             }
 
             $payload = [
-                'status'       => 'resolved',
-                'support_id'   => $data['support_id'],
-                'support_name' => $data['support_name'],
-                'priority'     => $data['priority'],
-                'end_date'     => $end,
-                'time_spent'   => $timeSpent,
-                'solution'     => $data['solution'],
-                'is_late'      => $isLate,
-                'waiting_hour' => $waitingHour,
+                'status'          => 'resolved',
+                'end_date'        => $end,
+                'time_spent'      => $timeSpent,
+                'is_late'         => $isLate,
+                'waiting_hour'    => $waitingHour,
                 'progres_percent' => 100,
             ];
 
+            // Opsional fields
+            if (!empty($data['support_id'])) {
+                $payload['support_id']   = $data['support_id'];
+                $supportUser = \App\Models\User::find($data['support_id']);
+                $payload['support_name'] = $supportUser?->name ?? ($data['support_name'] ?? $ticket->support_name);
+            }
+            if (!empty($data['priority']))    $payload['priority']     = $data['priority'];
+            if (!empty($data['solution']))    $payload['solution']     = $data['solution'];
+            if (!empty($data['notes']))       $payload['notes']        = $data['notes'];
+            if (!empty($data['description'])) $payload['notes']        = $data['description'];
             if (array_key_exists('assets_id', $data)) $payload['assets_id'] = $data['assets_id'];
-            if (!empty($data['notes']))                $payload['notes']     = $data['notes'];
 
             $ticket->update($payload);
 

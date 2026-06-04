@@ -1,121 +1,175 @@
-import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-
 import { XClose } from '../template/TemplateIcons.jsx'
-import TimeLineMT from '../timeline/TimeLineMT.jsx'
-import { getDeveloperProjects } from '../../services/reports/DeveloperReports.js'
+import { DataTableStatus } from '../table/DataTable.jsx'
 
-function DialogTimelineTickets({
-  isOpen = false,
-  developerId = null,
-  year = '2026',
-  status = 'all',
-  eyebrow = 'Dialog',
-  title = 'Timeline',
-  onClose,
-}) {
-  const [items, setItems] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
+// ─── Formatters ────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!isOpen || !developerId) {
-      setItems([])
-      return
-    }
+const DATE_FMT = new Intl.DateTimeFormat('id-ID', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'Asia/Jakarta',
+})
 
-    async function fetchTimeline() {
-      console.log('Fetching timeline for developerId:', developerId)
-      setIsLoading(true)
-      try {
-        const response = await getDeveloperProjects(developerId, { year, status })
-        console.log('API Response:', response)
-        
-        // Group tasks by project
-        const projectsTimeline = response.data.map(prj => {
-          const formatStatus = (s) => {
-            if (!s) return 'Unknown'
-            return s.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-          }
+const TIME_FMT = new Intl.DateTimeFormat('id-ID', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'Asia/Jakarta',
+})
 
-          const projectItems = []
-          if (prj.tasks && prj.tasks.length > 0) {
-            prj.tasks.forEach(task => {
-              projectItems.push({
-                id: `task-${task.id}`,
-                status: formatStatus(task.status || prj.status),
-                timestamp: task.progress_date,
-                title: prj.project_name,
-                detail: task.description || `Progress: ${task.progress_percent}%`
-              })
-            })
-          } else {
-            projectItems.push({
-              id: `prj-${prj.project_id}`,
-              status: formatStatus(prj.status),
-              timestamp: prj.last_progress_date || prj.end_date || prj.start_date,
-              title: prj.project_name,
-              detail: `Progress: ${prj.progress_percent}% - ${prj.tasks_count} Tasks (No detailed activity)`
-            })
-          }
+function fmtDate(value) {
+  if (!value) return null
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return null
+  return DATE_FMT.format(d)
+}
 
-          // Sort tasks within the project descending
-          projectItems.sort((a, b) => {
-            const dateA = new Date(a.timestamp)
-            const dateB = new Date(b.timestamp)
-            return dateB - dateA
-          })
-          
-          return {
-            projectId: prj.project_id,
-            projectName: prj.project_name,
-            latestTimestamp: projectItems.length > 0 ? projectItems[0].timestamp : null,
-            items: projectItems
-          }
-        })
+function fmtTime(value) {
+  if (!value) return null
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return null
+  return `${TIME_FMT.format(d)} WIB`
+}
 
-        // Sort projects by their latest task timestamp descending
-        projectsTimeline.sort((a, b) => {
-          const dateA = new Date(a.latestTimestamp)
-          const dateB = new Date(b.latestTimestamp)
-          return dateB - dateA
-        })
+// ─── Status helpers ────────────────────────────────────────────────────────────
 
-        setItems(projectsTimeline)
-      } catch (error) {
-        console.error('Failed to fetch developer projects:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
+function getVariant(status) {
+  const s = String(status ?? '').trim().toLowerCase()
+  if (s === 'created' || s === 'waiting') return 'pending'
+  if (s === 'in progress' || s === 'assigned') return 'active'
+  if (s === 'resolved') return 'active'
+  if (s === 'feedback') return 'app'
+  if (s === 'void') return 'inactive'
+  if (s === 'hold' || s === 'pending') return 'inactive'
+  return 'pending'
+}
 
-    fetchTimeline()
-  }, [isOpen, developerId, year, status])
+// ─── Build timeline from ticket if ticket.timeline is empty ───────────────────
 
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined
-    }
+function buildFallbackTimeline(ticket) {
+  if (!ticket) return []
+  const items = []
 
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        onClose?.()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen, onClose])
-
-  if (!isOpen) {
-    return null
+  if (ticket.requestDateValue) {
+    items.push({
+      status: 'Created',
+      title: 'Ticket Dibuat',
+      detail: ticket.problem && ticket.problem !== '-' ? ticket.problem : 'Permintaan ticket dikirim.',
+      timestamp: ticket.requestDateValue,
+    })
   }
 
-  if (typeof document === 'undefined') {
-    return null
+  if (ticket.startDateValue) {
+    items.push({
+      status: 'In Progress',
+      title: 'Penanganan Dimulai',
+      detail:
+        ticket.supportName && ticket.supportName !== '-'
+          ? `Ditangani oleh: ${ticket.supportName}`
+          : 'Ticket mulai dikerjakan.',
+      timestamp: ticket.startDateValue,
+    })
   }
+
+  const rawStatus = String(ticket.rawStatus || ticket.status || '').trim().toLowerCase()
+
+  if (rawStatus === 'hold') {
+    items.push({
+      status: 'Hold',
+      title: 'Di-Hold',
+      detail: ticket.notes && ticket.notes !== '-' ? ticket.notes : null,
+      timestamp: ticket.lastUpdatedValue,
+    })
+  }
+
+  if (rawStatus === 'resolved' && ticket.endDateValue) {
+    items.push({
+      status: 'Resolved',
+      title: 'Ticket Selesai',
+      detail: ticket.timeSpent && ticket.timeSpent !== '-' ? `Durasi: ${ticket.timeSpent}` : null,
+      timestamp: ticket.endDateValue,
+    })
+  }
+
+  if (rawStatus === 'void' && ticket.endDateValue) {
+    items.push({
+      status: 'Void',
+      title: 'Ticket Dibatalkan',
+      detail: ticket.notes && ticket.notes !== '-' ? ticket.notes : null,
+      timestamp: ticket.endDateValue,
+    })
+  }
+
+  if (rawStatus === 'feedback' && ticket.endDateValue) {
+    items.push({
+      status: 'Feedback',
+      title: 'Menunggu Feedback',
+      detail: null,
+      timestamp: ticket.endDateValue,
+    })
+  }
+
+  // Sort ascending
+  return items
+    .filter((item) => item.timestamp)
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+}
+
+// ─── Single Timeline Item ──────────────────────────────────────────────────────
+
+function TimelineItem({ item, isFirst, isLast }) {
+  const variant = getVariant(item.status)
+  const dateStr = fmtDate(item.timestamp)
+  const timeStr = fmtTime(item.timestamp)
+
+  return (
+    <div className="mtickets-timeline__item" role="listitem">
+      {/* timestamp col */}
+      <div className="mtickets-timeline__time">
+        <p className="mtickets-timeline__day">{dateStr ?? '—'}</p>
+        <p className="mtickets-timeline__hour">{timeStr ?? ''}</p>
+      </div>
+
+      {/* rail */}
+      <div className="mtickets-timeline__rail" aria-hidden="true">
+        <span
+          className={`mtickets-timeline__connector${isFirst ? ' mtickets-timeline__connector--hidden' : ''}`}
+        />
+        <span className={`mtickets-timeline__dot mtickets-timeline__dot--${variant}`} />
+        <span
+          className={`mtickets-timeline__connector${isLast ? ' mtickets-timeline__connector--hidden' : ''}`}
+        />
+      </div>
+
+      {/* content */}
+      <div className="mtickets-timeline__content">
+        <DataTableStatus inline variant={variant}>
+          {item.status ?? 'Status'}
+        </DataTableStatus>
+        {item.title ? <h4 className="mtickets-timeline__title">{item.title}</h4> : null}
+        {item.detail ? (
+          <p className="mtickets-timeline__description">{item.detail}</p>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+// ─── Dialog ────────────────────────────────────────────────────────────────────
+
+function DialogTimelineTickets({ isOpen = false, ticket = null, onClose }) {
+  if (!isOpen) return null
+  if (typeof document === 'undefined') return null
+
+  const ticketCode = ticket?.ticketCode ?? ticket?.ticket_code ?? ticket?.id ?? '—'
+
+  // Gunakan ticket.timeline jika ada, fallback ke build manual
+  const items =
+    Array.isArray(ticket?.timeline) && ticket.timeline.length > 0
+      ? ticket.timeline
+      : buildFallbackTimeline(ticket)
 
   const dialogNode = (
     <div className="dashboard-popup-overlay" role="presentation" onClick={onClose}>
@@ -123,17 +177,18 @@ function DialogTimelineTickets({
         className="dashboard-popup mtickets-timeline-popup"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="dialog-timeline-title"
-        onClick={(event) => event.stopPropagation()}
+        aria-labelledby="dialog-timeline-ticket-title"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '640px', width: '95vw' }}
       >
+        {/* Header */}
         <div className="dashboard-popup__header">
           <div>
-            <p className="dashboard-popup__eyebrow">{eyebrow}</p>
-            <h2 className="dashboard-popup__title" id="dialog-timeline-title">
-              {title}
+            <p className="dashboard-popup__eyebrow">Ticket Timeline</p>
+            <h2 className="dashboard-popup__title" id="dialog-timeline-ticket-title">
+              {ticketCode}
             </h2>
           </div>
-
           <button
             type="button"
             className="dashboard-popup__close"
@@ -144,44 +199,80 @@ function DialogTimelineTickets({
           </button>
         </div>
 
-        <div className="dashboard-popup__body mtickets-timeline-popup__body" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-          {items.length === 0 ? (
-            <p className="mtickets-timeline__empty">
-              {isLoading ? 'Memuat data timeline...' : 'Belum ada data project untuk developer ini.'}
-            </p>
-          ) : (
-            items.map((project) => (
-              <div key={project.projectId} className="project-timeline-group">
-                <div style={{
-                  marginBottom: '1.25rem',
-                  paddingBottom: '0.75rem',
-                  borderBottom: '1px solid var(--color-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <div style={{
-                    width: '8px',
-                    height: '24px',
-                    backgroundColor: 'var(--color-primary-main, #3b82f6)',
-                    borderRadius: '4px'
-                  }}></div>
-                  <h3 style={{ 
-                    fontSize: '1.125rem', 
-                    fontWeight: 600, 
-                    color: 'var(--color-text-main, #111827)',
-                    margin: 0
-                  }}>
-                    {project.projectName}
-                  </h3>
-                </div>
-                <TimeLineMT 
-                  items={project.items} 
-                  emptyMessage="Belum ada riwayat aktivitas untuk project ini."
-                />
-              </div>
-            ))
+        {/* Body */}
+        <div
+          className="dashboard-popup__body mtickets-timeline-popup__body"
+          style={{ maxHeight: '65vh', overflowY: 'auto', padding: '1.5rem 2rem' }}
+        >
+          {/* Info summary */}
+          {ticket && (
+            <div
+              style={{
+                background: 'var(--template-surface-2, #f3f4f6)',
+                borderRadius: '10px',
+                padding: '0.875rem 1rem',
+                marginBottom: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.375rem',
+              }}
+            >
+              {ticket.requestor && ticket.requestor !== '-' && (
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--template-fg-muted)' }}>
+                  <strong>Requestor:</strong> {ticket.requestor}
+                </p>
+              )}
+              {ticket.supportName && ticket.supportName !== '-' && (
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--template-fg-muted)' }}>
+                  <strong>Support:</strong> {ticket.supportName}
+                </p>
+              )}
+              {ticket.category && ticket.category !== '-' && (
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--template-fg-muted)' }}>
+                  <strong>Kategori:</strong> {ticket.category}
+                </p>
+              )}
+              {ticket.status && (
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--template-fg-muted)' }}>
+                  <strong>Status saat ini:</strong> {ticket.status}
+                  {ticket.progresPercent !== undefined && ticket.progresPercent !== null
+                    ? ` — ${ticket.progresPercent}%`
+                    : ''}
+                </p>
+              )}
+            </div>
           )}
+
+          {/* Timeline */}
+          {items.length === 0 ? (
+            <p className="mtickets-timeline__empty">Belum ada riwayat aktivitas untuk tiket ini.</p>
+          ) : (
+            <div
+              className="mtickets-timeline"
+              role="list"
+              aria-label={`Timeline tiket ${ticketCode}`}
+            >
+              {items.map((item, idx) => (
+                <TimelineItem
+                  key={item.id ?? `${item.status}-${idx}`}
+                  item={item}
+                  isFirst={idx === 0}
+                  isLast={idx === items.length - 1}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="dashboard-popup__actions">
+          <button
+            type="button"
+            className="dashboard-popup__button dashboard-popup__button--secondary"
+            onClick={onClose}
+          >
+            Tutup
+          </button>
         </div>
       </div>
     </div>

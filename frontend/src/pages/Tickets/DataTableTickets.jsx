@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import DialogVoidTickets from '../../components/dialog/DialogVoidTickets.jsx'
-import DialogExecutionTicket from '../../components/dialog/DialogExecutionTicket.jsx'
+import DialogProgressTicket from '../../components/dialog/DialogProgressTicket.jsx'
+import DialogHoldTicket from '../../components/dialog/DialogHoldTicket.jsx'
+import DialogResolveTicket from '../../components/dialog/DialogResolveTicket.jsx'
 import DataTable, { DataTableIdentity, DataTableStatus } from '../../components/table/DataTable.jsx'
-import { Play, XClose } from '../../components/template/TemplateIcons.jsx'
-import ButtonExecutionTickets from '../../components/button/ButtonExecutionTickets.jsx'
+import { XClose } from '../../components/template/TemplateIcons.jsx'
 import ButtonVoidTickets from '../../components/button/ButtonVoidTickets.jsx'
 import {
   DEFAULT_PAGE_SIZE,
@@ -27,6 +28,8 @@ import ButtonProgressTickets from '../../components/button/ButtonProgressTickets
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import PauseIcon from '@mui/icons-material/Pause'
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
+import ButtonHistoryTicket from '../../components/button/ButtonHistoryTicket.jsx'
+import DialogTimelineTickets from '../../components/dialog/DialogTimelineTickets.jsx'
 
 export const INITIAL_TICKET_ROWS = DEFAULT_TICKET_ROWS
 
@@ -257,13 +260,27 @@ function DataTableTickets({
     closeActionDialog()
   }
 
-  const handleExecutionConfirm = (updatedData) => {
-    // If updatedData is provided (from the API response), use it to update the row
+  const handleProgressSuccess = (updatedData) => {
     if (updatedData) {
       updateTicketStatus(selectedTicket.id, normalizeTicket(updatedData))
     } else {
-      // Fallback for manual updates if API didn't return data
       updateTicketStatus(selectedTicket.id, { rawStatus: 'in_progress', status: 'In Progress' })
+    }
+  }
+
+  const handleHoldSuccess = (updatedData) => {
+    if (updatedData) {
+      updateTicketStatus(selectedTicket.id, normalizeTicket(updatedData))
+    } else {
+      updateTicketStatus(selectedTicket.id, { rawStatus: 'hold', status: 'Hold' })
+    }
+  }
+
+  const handleResolveSuccess = (updatedData) => {
+    if (updatedData) {
+      updateTicketStatus(selectedTicket.id, normalizeTicket(updatedData))
+    } else {
+      updateTicketStatus(selectedTicket.id, { rawStatus: 'resolved', status: 'Resolved', progresPercent: 100 })
     }
   }
 
@@ -321,6 +338,7 @@ function DataTableTickets({
           title: (ticket) => ticket.ticketCode || ticket.id,
           description: (ticket) => ticket.problem,
           headerActions: (ticket) => {
+            console.log('Rendering header actions for ticket:', ticket.id || ticket.ticketCode)
             const rawStatusVal = ticket.rawStatus || ticket.status || ''
             const statusClean = String(rawStatusVal).trim().toLowerCase()
             const isWaiting = statusClean === 'waiting'
@@ -330,58 +348,69 @@ function DataTableTickets({
             const isResolved = statusClean === 'resolved'
             const isUnready = ticket.statusDocument === 'unready'
 
-            if (isResolved || isVoid) return null
-
             return (
               <div className="users-table__accordion-actions" style={{ gap: '0.5rem' }}>
-                {(isWaiting || isHold || isInProgress) && (
-                  <ButtonProgressTickets
-                    tone="warning"
-                    disabled={isUnready}
-                    title={isUnready ? 'Status Document Unready' : ''}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      openActionDialog('progress', ticket)
-                    }}
-                  >
-                    <PlayArrowIcon fontSize="small" />
-                    {isWaiting ? ' Start' : isHold ? ' Continue' : ' Progress'}
-                  </ButtonProgressTickets>
+                {!(isResolved || isVoid) && (
+                  <>
+                    {(isWaiting || isHold || isInProgress) && (
+                      <ButtonProgressTickets
+                        tone="warning"
+                        disabled={isUnready}
+                        title={isUnready ? 'Status Document Unready' : ''}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          openActionDialog('progress', ticket)
+                        }}
+                      >
+                        <PlayArrowIcon fontSize="small" />
+                        {isWaiting ? ' Start' : isHold ? ' Continue' : ' Progress'}
+                      </ButtonProgressTickets>
+                    )}
+                    {isInProgress && (
+                      <ButtonHoldTickets
+                        tone="danger"
+                        disabled={isUnready}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          openActionDialog('hold', ticket)
+                        }}
+                      >
+                        <PauseIcon fontSize="small" /> Hold
+                      </ButtonHoldTickets>
+                    )}
+                    {isInProgress && (
+                      <ButtonResolveTickets
+                        tone="default"
+                        disabled={isUnready}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          openActionDialog('resolve', ticket)
+                        }}
+                      >
+                        <CheckCircleOutlinedIcon fontSize="small" /> Resolve
+                      </ButtonResolveTickets>
+                    )}
+                    <ButtonVoidTickets
+                      tone="danger"
+                      disabled={isVoid}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        openActionDialog('void', ticket)
+                      }}
+                    >
+                      <XClose size={16} /> Void
+                    </ButtonVoidTickets>
+                  </>
                 )}
-                {isInProgress && (
-                  <ButtonHoldTickets
-                    tone="danger"
-                    disabled={isUnready}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      openActionDialog('hold', ticket)
-                    }}
-                  >
-                    <PauseIcon fontSize="small" /> Hold
-                  </ButtonHoldTickets>
-                )}
-                {isInProgress && (
-                  <ButtonResolveTickets
-                    tone="default"
-                    disabled={isUnready}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      openActionDialog('resolve', ticket)
-                    }}
-                  >
-                    <CheckCircleOutlinedIcon fontSize="small" /> Resolve
-                  </ButtonResolveTickets>
-                )}
-                <ButtonVoidTickets
-                  tone="danger"
-                  disabled={isVoid}
+                <ButtonHistoryTicket
+                  tone="default"
                   onClick={(event) => {
                     event.stopPropagation()
-                    openActionDialog('void', ticket)
+                    openActionDialog('history', ticket)
                   }}
                 >
-                  <XClose size={16} /> Void
-                </ButtonVoidTickets>
+                  History
+                </ButtonHistoryTicket>
               </div>
             )
           },
@@ -391,21 +420,25 @@ function DataTableTickets({
         pagination={pagination}
       />
 
-      <DialogExecutionTicket
-        isOpen={activeActionDialog === 'execution'}
-        eyebrow="Execution Ticket"
-        title={`Execution ${selectedTicketName}`}
+      <DialogProgressTicket
+        isOpen={activeActionDialog === 'progress'}
         ticket={selectedTicket}
-        description={
-          <>
-            Ticket <strong>{selectedTicketName}</strong> akan dipindahkan ke proses execution.
-          </>
-        }
-        secondaryDescription="Status ticket akan diperbarui menjadi In Progress pada tabel aktif."
-        confirmLabel="Execution"
-        user={dialogTicket}
         onClose={closeActionDialog}
-        onConfirm={handleExecutionConfirm}
+        onSuccess={handleProgressSuccess}
+      />
+
+      <DialogHoldTicket
+        isOpen={activeActionDialog === 'hold'}
+        ticket={selectedTicket}
+        onClose={closeActionDialog}
+        onSuccess={handleHoldSuccess}
+      />
+
+      <DialogResolveTicket
+        isOpen={activeActionDialog === 'resolve'}
+        ticket={selectedTicket}
+        onClose={closeActionDialog}
+        onSuccess={handleResolveSuccess}
       />
 
       <DialogVoidTickets
@@ -422,6 +455,12 @@ function DataTableTickets({
         confirmLabel="Void"
         onClose={closeActionDialog}
         onConfirm={handleVoidConfirm}
+      />
+
+      <DialogTimelineTickets
+        isOpen={activeActionDialog === 'history'}
+        ticket={selectedTicket}
+        onClose={closeActionDialog}
       />
     </div>
   )

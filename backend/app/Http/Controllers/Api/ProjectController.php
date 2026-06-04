@@ -107,6 +107,10 @@ class ProjectController extends Controller
 
         $q = ProjectHeaders::with(['details', 'pendings'])->orderByDesc('id');
 
+        if (!\App\Helpers\AuthHelper::isAdmin($request)) {
+            $q->where('requestor_id', \App\Helpers\AuthHelper::userId($request));
+        }
+
         // ✅ Kalau dua-duanya ada → filter range
         if ($startDate && $endDate) {
             $q->whereBetween('request_date', [$startDate, $endDate]);

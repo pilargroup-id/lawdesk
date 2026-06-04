@@ -18,17 +18,8 @@ import {
   getStatusVariant,
 } from '../../services/projects/DataTableProjects.js'
 import { getProjectHistory } from '../../services/projects/Projects.js'
-import ButtonHoldPrj from '../../components/button/ButtonHoldPrj.jsx'
-import ButtonResolvePrj from '../../components/button/ButtonResolvePrj.jsx'
-import ButtonProgressPrj from '../../components/button/ButtonProgressPrj.jsx'
 import ButtonHistoryPrj from '../../components/button/ButtonHistoryPrj.jsx'
-import DialogProgressPrj from '../../components/dialog/DialogProgressPrj.jsx'
-import DialogHoldPrj from '../../components/dialog/DialogHoldPrj.jsx'
-import DialogResolvePrj from '../../components/dialog/DialogResolvePrj.jsx'
 import DialogHistoryPrj from '../../components/dialog/DialogHistoryPrj.jsx'
-import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import PauseIcon from '@mui/icons-material/Pause'
-import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined'
 
 const columns = [
   {
@@ -67,8 +58,48 @@ const columns = [
   {
     key: 'progress',
     header: 'Progress',
-    accessor: 'progress',
-    cellStyle: { whiteSpace: 'nowrap', width: '9%' },
+    cellStyle: { minWidth: '160px' },
+    render: (project) => {
+      const pct = Number(project.progressValue) || 0
+      const isResolved = String(project.rawStatus || '').trim().toLowerCase() === 'resolved'
+      const displayPct = isResolved ? 100 : pct
+      const color = displayPct >= 100
+        ? '#2a9d8f'
+        : displayPct >= 50
+          ? '#f4a261'
+          : '#e76f51'
+
+      return (
+        <div style={{ minWidth: '140px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--template-fg-muted)' }}>
+              {isResolved ? 'Selesai' : 'Pengerjaan'}
+            </span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color }}>
+              {displayPct}%
+            </span>
+          </div>
+          <div style={{
+            height: '6px',
+            borderRadius: '999px',
+            background: '#e5e7eb',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${displayPct}%`,
+              borderRadius: '999px',
+              background: displayPct >= 100
+                ? 'linear-gradient(90deg, #2a9d8f, #38c2b2)'
+                : displayPct >= 50
+                  ? 'linear-gradient(90deg, #f4a261, #e9c46a)'
+                  : 'linear-gradient(90deg, #e76f51, #f4a261)',
+              transition: 'width 0.4s ease',
+            }} />
+          </div>
+        </div>
+      )
+    },
   },
   {
     key: 'description',
@@ -105,29 +136,11 @@ function DataTableProjects({
 
   // State for dialogs
   const [selectedProject, setSelectedProject] = useState(null)
-  const [isProgressOpen, setIsProgressOpen] = useState(false)
-  const [isHoldOpen, setIsHoldOpen] = useState(false)
-  const [isResolveOpen, setIsResolveOpen] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
 
   const handleOpenHistory = (project) => {
     setSelectedProject(project)
     setIsHistoryOpen(true)
-  }
-
-  const handleOpenProgress = (project) => {
-    setSelectedProject(project)
-    setIsProgressOpen(true)
-  }
-
-  const handleOpenHold = (project) => {
-    setSelectedProject(project)
-    setIsHoldOpen(true)
-  }
-
-  const handleOpenResolve = (project) => {
-    setSelectedProject(project)
-    setIsResolveOpen(true)
   }
 
   const filteredRows = useMemo(
@@ -184,38 +197,11 @@ function DataTableProjects({
           title: (project) => [project.projectCode, project.projectName].filter(Boolean).join(' - '),
           description: () => null,
           headerActions: (project) => {
-            const { rawStatus } = project
-            const isWaiting = rawStatus === 'waiting'
-            const isHold = rawStatus === 'hold' || rawStatus === 'pending'
-            const isInProgress = ['start', 'progress', 'in_progress'].includes(rawStatus)
-            const isResolved = rawStatus === 'resolved'
-            const isVoid = rawStatus === 'void'
-
             return (
               <div className="users-table__accordion-actions" style={{ gap: '0.5rem' }}>
                 <ButtonHistoryPrj onClick={() => handleOpenHistory(project)}>
                   History
                 </ButtonHistoryPrj>
-                {!isResolved && !isVoid && (
-                  <>
-                    {(isWaiting || isHold || isInProgress) && (
-                      <ButtonProgressPrj tone="warning" onClick={() => handleOpenProgress(project)}>
-                        <PlayArrowIcon fontSize="small" />
-                        {isWaiting ? ' Start' : isHold ? ' Continue' : ' Progress'}
-                      </ButtonProgressPrj>
-                    )}
-                    {isInProgress && (
-                      <ButtonHoldPrj tone="danger" onClick={() => handleOpenHold(project)}>
-                        <PauseIcon fontSize="small" /> Hold
-                      </ButtonHoldPrj>
-                    )}
-                    {isInProgress && (
-                      <ButtonResolvePrj tone="default" onClick={() => handleOpenResolve(project)}>
-                        <CheckCircleOutlinedIcon fontSize="small" /> Resolve
-                      </ButtonResolvePrj>
-                    )}
-                  </>
-                )}
               </div>
             )
           },
@@ -232,24 +218,6 @@ function DataTableProjects({
         }}
         emptyMessage={emptyMessage}
         pagination={pagination}
-      />
-      <DialogProgressPrj
-        isOpen={isProgressOpen}
-        onClose={() => setIsProgressOpen(false)}
-        onSuccess={onRefresh}
-        project={selectedProject}
-      />
-      <DialogHoldPrj
-        isOpen={isHoldOpen}
-        onClose={() => setIsHoldOpen(false)}
-        onSuccess={onRefresh}
-        project={selectedProject}
-      />
-      <DialogResolvePrj
-        isOpen={isResolveOpen}
-        onClose={() => setIsResolveOpen(false)}
-        onSuccess={onRefresh}
-        project={selectedProject}
       />
       <DialogHistoryPrj
         isOpen={isHistoryOpen}

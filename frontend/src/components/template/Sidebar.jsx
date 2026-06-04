@@ -171,16 +171,36 @@ function Sidebar({
   const [expandedGroups, setExpandedGroups] = useState({})
   const initials = getInitials(userName)
   const filteredPrimaryItems = useMemo(() => {
+    const hiddenItemIds = ['my-tickets', 'tickets-overview', 'team-performance', 'executive-insight'];
+
+    const filterItems = (items) => {
+      return items
+        .filter(item => !hiddenItemIds.includes(item.id))
+        .map(item => {
+          if (item.children) {
+            return { ...item, children: filterItems(item.children) };
+          }
+          return item;
+        });
+    };
+
     const isITorLegal =
       userDepartment?.toLowerCase() === 'it' ||
       userDepartment?.toLowerCase() === 'legal' ||
       userRole?.toLowerCase().includes('it ') ||
       userRole?.toLowerCase().includes('legal');
 
-    if (isAdmin || isITorLegal) {
-      return primaryItems
+    let baseItems = primaryItems;
+    if (!(isAdmin || isITorLegal)) {
+      baseItems = primaryItems.filter((item) => 
+        item.id === 'my-tickets' || 
+        item.label === 'My Tickets' || 
+        item.id === 'req-projects' || 
+        item.label === 'Request Project'
+      )
     }
-    return primaryItems.filter((item) => item.id === 'my-tickets' || item.label === 'My Tickets')
+
+    return filterItems(baseItems);
   }, [primaryItems, isAdmin, userDepartment, userRole])
   const activeExpandedGroups = useMemo(
     () => getInitiallyExpandedGroups([...filteredPrimaryItems, ...secondaryItems], activePath),

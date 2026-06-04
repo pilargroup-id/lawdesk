@@ -67,8 +67,48 @@ const columns = [
   {
     key: 'progress',
     header: 'Progress',
-    accessor: 'progress',
-    cellStyle: { whiteSpace: 'nowrap', width: '9%' },
+    cellStyle: { minWidth: '160px' },
+    render: (project) => {
+      const pct = Number(project.progressValue) || 0
+      const isResolved = String(project.rawStatus || '').trim().toLowerCase() === 'resolved'
+      const displayPct = isResolved ? 100 : pct
+      const color = displayPct >= 100
+        ? '#2a9d8f'
+        : displayPct >= 50
+          ? '#f4a261'
+          : '#e76f51'
+
+      return (
+        <div style={{ minWidth: '140px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--template-fg-muted)' }}>
+              {isResolved ? 'Selesai' : 'Pengerjaan'}
+            </span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color }}>
+              {displayPct}%
+            </span>
+          </div>
+          <div style={{
+            height: '6px',
+            borderRadius: '999px',
+            background: '#e5e7eb',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${displayPct}%`,
+              borderRadius: '999px',
+              background: displayPct >= 100
+                ? 'linear-gradient(90deg, #2a9d8f, #38c2b2)'
+                : displayPct >= 50
+                  ? 'linear-gradient(90deg, #f4a261, #e9c46a)'
+                  : 'linear-gradient(90deg, #e76f51, #f4a261)',
+              transition: 'width 0.4s ease',
+            }} />
+          </div>
+        </div>
+      )
+    },
   },
   {
     key: 'description',

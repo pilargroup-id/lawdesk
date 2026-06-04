@@ -86,6 +86,17 @@ Route::middleware('auth.jwt')->group(function () {
     });
 
     // ===========================
+    // SHARED RESOURCES (All Authenticated Users)
+    // ===========================
+    Route::get('/user', [UserController::class, 'index']);
+
+    Route::prefix('project')->group(function () {
+        Route::get('/', [ProjectController::class, 'index']);
+        Route::post('/', [ProjectController::class, 'store']);
+        Route::get('/{id}/history', [ProjectController::class, 'history']);
+    });
+
+    // ===========================
     // ADMIN SIDE
     // ===========================
     Route::middleware('admin')->group(function () {
@@ -103,7 +114,6 @@ Route::middleware('auth.jwt')->group(function () {
         Route::post('/approve-user/{id}', [AuthController::class, 'approveUser']);
         Route::put('/user/{id}', [UserController::class, 'update']);
         Route::delete('/user/{id}', [UserController::class, 'destroy']);
-        Route::get('/user', [UserController::class, 'index']);
 
         // ---------------------------
         // MASTER DATA (Admin)
@@ -129,12 +139,9 @@ Route::middleware('auth.jwt')->group(function () {
         Route::get('/feedback', [FeedbackController::class, 'index']);
 
         // ---------------------------
-        // PROJECT (Admin)
+        // PROJECT (Admin Actions)
         // ---------------------------
         Route::prefix('project')->group(function () {
-            Route::get('/', [ProjectController::class, 'index']);
-            Route::post('/', [ProjectController::class, 'store']);
-
             Route::post('/{id}/start', [ProjectController::class, 'start']);
             Route::post('/{id}/progress', [ProjectController::class, 'progress']);
             Route::post('/{id}/hold', [ProjectController::class, 'hold']);
@@ -142,7 +149,6 @@ Route::middleware('auth.jwt')->group(function () {
             Route::post('/{id}/void', [ProjectController::class, 'void']);
             Route::post('/{id}/resolve', [ProjectController::class, 'resolve']);
 
-            Route::get('/{id}/history', [ProjectController::class, 'history']);
             Route::put('/{id}', [ProjectController::class, 'update']);
         });
 

@@ -111,17 +111,15 @@ function DialogProgressPrj({
                 <label className="register-user-popup__label" htmlFor="progress-percent">
                   Progress (%)
                 </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <input
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0 1rem' }}>
+                  <SliderProject
                     id="progress-percent"
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="1"
-                    className="register-user-popup__input"
-                    style={{ flex: 1, padding: 0, height: '8px' }}
+                    min={0}
+                    max={100}
+                    step={1}
                     value={progressPercent}
-                    onChange={(e) => setProgressPercent(Number(e.target.value))}
+                    onChange={(e, val) => setProgressPercent(val)}
+                    style={{ flex: 1 }}
                   />
                   <span style={{ minWidth: '3rem', textAlign: 'right', fontWeight: 600 }}>
                     {progressPercent}%

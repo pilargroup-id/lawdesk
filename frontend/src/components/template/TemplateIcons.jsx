@@ -267,3 +267,12 @@ export function Filter(props) {
     </IconBase>
   )
 }
+
+export function Send01(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M22 2 11 13" />
+      <path d="M22 2 15 22 11 13 2 9l20-7z" />
+    </IconBase>
+  )
+}

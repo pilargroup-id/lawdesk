@@ -5,6 +5,7 @@ import {
   Ticket01,
   Folder,
   TrendingUp,
+  Send01,
 } from '../../components/template/TemplateIcons.jsx'
 
 export const defaultNavigationPath = '/dashboard'
@@ -13,6 +14,7 @@ export const implementedNavigationPaths = [
   '/MyTickets',
   '/TicketsOverview',
   '/ProjectsOverview',
+  '/ReqProjects',
   '/Reports',
   '/Reports/TeamPerformance',
   '/Reports/ExecutiveInsights',
@@ -33,6 +35,12 @@ export const primaryNavigationItems = [
     label: 'Tickets Overview',
     href: '/TicketsOverview',
     icon: TrendingUp,
+  },
+  {
+    id: 'req-projects',
+    label: 'Request Project',
+    href: '/ReqProjects',
+    icon: Send01,
   },
   {
     id: 'projects-overview',

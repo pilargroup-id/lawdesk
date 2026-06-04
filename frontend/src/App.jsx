@@ -21,6 +21,7 @@ import LineChartPreview from './components/chart/LineChart.jsx'
 import PieChartPreview from './components/chart/PieChart.jsx'
 import { Edit03, Trash03, Users01 } from './components/template/TemplateIcons.jsx'
 import ProjectsOverview from './pages/Projects/ProjectsOverview.jsx'
+import ReqProjectsOverview from './pages/req-projects/ReqProjectsOverview.jsx'
 import TicketsOverview from './pages/tickets/TicketsOverview.jsx'
 import MyTickets from './pages/my-tickets/MyTickets.jsx'
 import TeamPerformence from './pages/reports/team-performence/TeamPerformence.jsx'
@@ -84,6 +85,12 @@ const pageDetails = {
     eyebrow: 'Project Summary',
     value: '7',
     detail: 'Ringkasan proyek dan aktivitas terkait.',
+  },
+  '/ReqProjects': {
+    title: 'Request Project',
+    eyebrow: 'Project Request',
+    value: '',
+    detail: 'Daftar project yang telah diajukan.',
   },
   '/Chart': {
     title: 'Chart',
@@ -508,7 +515,7 @@ function App() {
   useEffect(() => {
     if (isInitializing) return
 
-    if (sessionUser && !isAdmin && activePath !== '/MyTickets') {
+    if (sessionUser && !isAdmin && activePath !== '/MyTickets' && activePath !== '/ReqProjects') {
       window.history.replaceState({}, '', '/MyTickets')
       setActivePath('/MyTickets')
     }
@@ -554,7 +561,8 @@ function App() {
   const isMasterCategoryPage = activePath === '/Master/Category'
   const isTicketsOverviewPage = activePath === '/TicketsOverview'
   const isProjectsOverviewPage = activePath === '/ProjectsOverview'
-  const isCustomOverviewPage = isTicketsOverviewPage || isProjectsOverviewPage
+  const isReqProjectsPage = activePath === '/ReqProjects'
+  const isCustomOverviewPage = isTicketsOverviewPage || isProjectsOverviewPage || isReqProjectsPage
   const isTicketWorkspacePage = activePath === '/MyTickets' || isCustomOverviewPage
   const tableEntityLabel = isUsersPage ? 'user' : 'data'
   const selectedUserName = selectedUser?.name ?? 'data ini'
@@ -806,6 +814,8 @@ function App() {
                   />
                 ) : (isProjectsOverviewPage && isAdmin) ? (
                   <ProjectsOverview activePage={activePage} searchQuery={searchQuery} />
+                ) : (isReqProjectsPage) ? (
+                  <ReqProjectsOverview activePage={activePage} searchQuery={searchQuery} />
                 ) : (isTeamPerformancePage && isAdmin) ? (
                   <TeamPerformence />
                 ) : (isExecutiveInsightPage && isAdmin) ? (

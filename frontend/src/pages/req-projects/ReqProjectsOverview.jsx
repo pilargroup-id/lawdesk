@@ -8,10 +8,10 @@ import {
   getProjects,
   normalizeProjectStatusCounts,
 } from '../../services/projects/Projects.js'
-import CardStatusProjects from './CardStatusProjects.jsx'
-import DataTableProjects from './DataTableReqProjects.jsx'
+import CardStatusReqProjects from './CardStatusReqProjects.jsx'
+import DataTableReqProjects from './DataTableReqProjects.jsx'
 
-function ProjectsOverview({ activePage, searchQuery }) {
+function ReqProjectsOverview({ activePage, searchQuery }) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [projectRows, setProjectRows] = useState(INITIAL_PROJECT_ROWS)
@@ -69,7 +69,7 @@ function ProjectsOverview({ activePage, searchQuery }) {
 
   return (
     <>
-      <CardStatusProjects
+      <CardStatusReqProjects
         activeStatus={statusFilter}
         onStatusChange={setStatusFilter}
         statusCounts={statusCounts}
@@ -77,12 +77,12 @@ function ProjectsOverview({ activePage, searchQuery }) {
 
       <section
         className="dashboard-panel users-table-card mytickets-table-card"
-        aria-label="Aktivitas legal"
+        aria-label="Request Project"
       >
         <div className="users-table-card__header mytickets-table-card__header">
           <div className="mytickets-table-card__title-group">
             <h1 className="dashboard-panel__title mytickets-table-card__title">
-              {activePage?.title ?? 'Projects Overview'}
+              {activePage?.title ?? 'Request Project'}
             </h1>
           </div>
 
@@ -102,7 +102,7 @@ function ProjectsOverview({ activePage, searchQuery }) {
           </div>
         </div>
 
-        <DataTableProjects
+        <DataTableReqProjects
           dateRange={dateRange}
           searchQuery={searchQuery}
           statusFilter={statusFilter}
@@ -110,7 +110,7 @@ function ProjectsOverview({ activePage, searchQuery }) {
           isLoading={isLoadingProjects}
           errorMessage={projectsError}
           onRefresh={() => setRefreshTrigger((prev) => prev + 1)}
-          tableLabel={`${activePage?.title ?? 'Projects Overview'} table`}
+          tableLabel={`${activePage?.title ?? 'Request Project'} table`}
         />
       </section>
 
@@ -125,4 +125,4 @@ function ProjectsOverview({ activePage, searchQuery }) {
   )
 }
 
-export default ProjectsOverview
+export default ReqProjectsOverview

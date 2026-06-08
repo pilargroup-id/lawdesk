@@ -10,6 +10,7 @@ use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 class JwtAuthMiddleware
+/// Middleware untuk memverifikasi JWT token dan menambahkan informasi user ke request
 {
     public function handle(Request $request, Closure $next)
     {

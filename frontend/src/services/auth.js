@@ -26,6 +26,51 @@ function parseUserValue(value) {
   }
 }
 
+function toTitleCase(value) {
+  return String(value || '')
+    .replace(/[._-]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
+}
+
+function createDevFallbackUser(username) {
+  const normalizedUsername = String(username || 'developer').trim() || 'developer'
+  const displayName = toTitleCase(normalizedUsername)
+
+  return {
+    id: `dev-${normalizedUsername}`,
+    username: normalizedUsername,
+    name: displayName || 'Developer',
+    email: normalizedUsername.includes('@')
+      ? normalizedUsername
+      : `${normalizedUsername}@pilargroup.id`,
+    department: 'Legal',
+    department_name: 'Legal',
+    department_id: 2,
+    job_position: 'Legal Admin',
+    role: 'Admin',
+    is_admin: true,
+  }
+}
+
+function createDevFallbackSession(username) {
+  const user = createDevFallbackUser(username)
+  const token = `dev-${user.username}-${Date.now()}`
+
+  return {
+    access_token: token,
+    user,
+    session: setStoredSession({
+      token,
+      user,
+    }),
+    source: 'local-mock',
+  }
+}
+
 export function getStoredUser(userKey = DEFAULT_USER_KEY) {
   if (!isBrowser()) {
     return null
@@ -123,20 +168,30 @@ export function getAuthErrorFromUrl(search = isBrowser() ? window.location.searc
 }
 
 export async function loginWithDevCredentials({ username, password }) {
-  const response = await api.post(
-    '/dev/login',
-    { username, password },
-    { token: null },
-  )
+  try {
+    const response = await api.post(
+      '/dev/login',
+      { username, password },
+      { token: null },
+    )
 
-  const session = setStoredSession({
-    token: response?.access_token ?? null,
-    user: response?.user ?? null,
-  })
+    const user = response?.user ?? createDevFallbackUser(username)
+    const session = setStoredSession({
+      token: response?.access_token ?? null,
+      user,
+    })
 
-  return {
-    ...response,
-    session,
+    return {
+      ...response,
+      user,
+      session,
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      return createDevFallbackSession(username)
+    }
+
+    throw error
   }
 }
 

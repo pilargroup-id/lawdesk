@@ -33,14 +33,14 @@ import { consumeSsoSuccessParams, getStoredUser, loginWithDevCredentials } from 
 
 function getCurrentPath() {
   if (typeof window === 'undefined') {
-    return '/MyTickets'
+    return '/ReqProjects'
   }
 
-  return window.location.pathname === '/' ? '/MyTickets' : window.location.pathname
+  return window.location.pathname === '/' ? '/ReqProjects' : window.location.pathname
 }
 
 function supportsPageLoadingBackdrop(path) {
-  return path === '/MyTickets' || path === '/TicketsOverview'
+  return path === '/ReqProjects' || path === '/MyTickets' || path === '/TicketsOverview'
 }
 
 const pageDetails = {
@@ -516,8 +516,8 @@ function App() {
     if (isInitializing) return
 
     if (sessionUser && !isAdmin && activePath !== '/MyTickets' && activePath !== '/ReqProjects') {
-      window.history.replaceState({}, '', '/MyTickets')
-      setActivePath('/MyTickets')
+      window.history.replaceState({}, '', '/ReqProjects')
+      setActivePath('/ReqProjects')
     }
   }, [isInitializing, sessionUser, activePath, isAdmin])
 
@@ -529,13 +529,13 @@ function App() {
         const session = consumeSsoSuccessParams()
 
         setSessionUser(session?.user ?? getStoredUser())
-        window.history.replaceState({}, '', '/MyTickets')
-        setActivePath('/MyTickets')
+        window.history.replaceState({}, '', '/ReqProjects')
+        setActivePath('/ReqProjects')
         return
       }
 
       if (window.location.pathname === '/') {
-        window.history.replaceState({}, '', '/MyTickets')
+        window.history.replaceState({}, '', '/ReqProjects')
       }
 
       setSessionUser(getStoredUser())
@@ -550,7 +550,7 @@ function App() {
     }
   }, [])
 
-  const activePage = pageDetails[activePath] ?? pageDetails['/MyTickets']
+  const activePage = pageDetails[activePath] ?? pageDetails['/ReqProjects']
   const isUsersPage = activePath === '/users'
   const isTableActionsPage = activePath === '/TableActions'
   const isTablePage = tablePagePaths.includes(activePath)
@@ -815,7 +815,11 @@ function App() {
                 ) : (isProjectsOverviewPage && isAdmin) ? (
                   <ProjectsOverview activePage={activePage} searchQuery={searchQuery} />
                 ) : (isReqProjectsPage) ? (
-                  <ReqProjectsOverview activePage={activePage} searchQuery={searchQuery} />
+                  <ReqProjectsOverview
+                    activePage={activePage}
+                    searchQuery={searchQuery}
+                    onLoadingChange={setIsPageLoading}
+                  />
                 ) : (isTeamPerformancePage && isAdmin) ? (
                   <TeamPerformence />
                 ) : (isExecutiveInsightPage && isAdmin) ? (

@@ -54,10 +54,12 @@ class ProjectHeaders extends Model
         return $this->hasMany(Pendings::class, 'project_header_id', 'id');
     }
 
-    public function requestor()
-    {
-        return $this->belongsTo(User::class, 'requestor_id', 'id');
-    }
+    // Note: requestor_id adalah central_user_id (UUID string), bukan FK ke users table
+    // Gunakan requestor_name untuk menampilkan nama requestor tanpa join ke User model
+    // public function requestor()
+    // {
+    //     return $this->belongsTo(User::class, 'requestor_id', 'id');
+    // }
 
     // ==========================
     // CONSTANTS STATUS (biar konsisten)

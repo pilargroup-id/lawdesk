@@ -14,7 +14,7 @@ class JwtAuthMiddleware
     public function handle(Request $request, Closure $next)
     {
         \Log::info('JwtAuthMiddleware hit', ['url' => $request->fullUrl()]);
-        
+
         $token = $request->bearerToken();
 
         if (!$token) {
@@ -24,12 +24,14 @@ class JwtAuthMiddleware
         try {
             $payload = JWTAuth::parseToken()->getPayload();
 
-            $departmentId   = $payload->get('department_id');
+            $departmentId = (int) $payload->get('department_id');
             $departmentName = strtoupper(trim((string) $payload->get('department')));
-            $role           = strtolower(trim((string) $payload->get('role')));
+            $role = strtolower(trim((string) $payload->get('role')));
 
-            $adminDeptNames = ['LEGAL'];
-            $isAdmin = $departmentId == 2
+            $adminDeptIds = [2, 8];
+            $adminDeptNames = ['LEGAL', 'IT', 'INFORMATION TECHNOLOGY'];
+
+            $isAdmin = in_array($departmentId, $adminDeptIds, true)
                 || $role === 'admin'
                 || in_array($departmentName, $adminDeptNames, true);
 
@@ -48,9 +50,12 @@ class JwtAuthMiddleware
             ]);
 
             \Log::info('JwtAuthMiddleware success', [
-                'user_id'    => $payload->get('sub'),
-                'username'   => $payload->get('username'),
-                'department' => $payload->get('department'),
+                'user_id'       => $payload->get('sub'),
+                'username'      => $payload->get('username'),
+                'department_id' => $departmentId,
+                'department'    => $payload->get('department'),
+                'role'          => $role,
+                'is_admin'      => $isAdmin,
             ]);
 
             return $next($request);

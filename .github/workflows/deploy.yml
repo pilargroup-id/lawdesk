@@ -22,7 +22,29 @@ jobs:
         uses: actions/checkout@v4
 
       # -------------------------
-      # 2. Install frontend dependencies
+      # 2. Force frontend production env
+      # CI/CD build wajib pakai env lawdesk
+      # -------------------------
+      - name: Create frontend production env
+        shell: powershell
+        run: |
+          Write-Host ">> Creating frontend .env.production for lawdesk..."
+
+          $envContent = @(
+            "VITE_API_URL=https://lawdesk.pilargroup.id/api"
+            "VITE_APP_NAME=Lawdesk"
+            "VITE_APP_ENV=production"
+            "VITE_SSO_LOGIN_URL=https://pilargroup.id/login"
+            "VITE_CENTRAL_PORTAL_API_URL=https://pilargroup.id"
+          )
+
+          $envContent | Set-Content -Path "$env:GITHUB_WORKSPACE\frontend\.env.production" -Encoding UTF8
+
+          Write-Host ">> Frontend .env.production created:"
+          Get-Content "$env:GITHUB_WORKSPACE\frontend\.env.production"
+
+      # -------------------------
+      # 3. Install frontend dependencies
       # -------------------------
       - name: Install frontend dependencies
         working-directory: frontend
@@ -30,7 +52,7 @@ jobs:
         run: C:\nvm4w\nodejs\npm.cmd install
 
       # -------------------------
-      # 3. Build frontend
+      # 4. Build frontend
       # Vite output: ../backend/public
       # -------------------------
       - name: Build frontend
@@ -39,7 +61,7 @@ jobs:
         run: C:\nvm4w\nodejs\npm.cmd run build
 
       # -------------------------
-      # 4. Ensure backend destination exists
+      # 5. Ensure backend destination exists
       # -------------------------
       - name: Ensure backend destination
         shell: powershell
@@ -53,7 +75,7 @@ jobs:
           Write-Host ">> Done"
 
       # -------------------------
-      # 5.a Clean old frontend assets
+      # 6. Clean old frontend assets
       # -------------------------
       - name: Clean old frontend assets
         shell: powershell
@@ -71,7 +93,7 @@ jobs:
           Write-Host ">> Done"
 
       # -------------------------
-      # 5.b Copy Laravel backend
+      # 7. Copy Laravel backend
       # React/Vite build already exists in backend/public
       # -------------------------
       - name: Copy Laravel backend
@@ -88,7 +110,7 @@ jobs:
           Write-Host ">> Done"
 
       # -------------------------
-      # 6. Ensure Laravel writable directories
+      # 8. Ensure Laravel writable directories
       # -------------------------
       - name: Ensure Laravel writable directories
         shell: powershell
@@ -102,7 +124,7 @@ jobs:
           Write-Host ">> Done"
 
       # -------------------------
-      # 7. Install Composer dependencies
+      # 9. Install Composer dependencies
       # -------------------------
       - name: Install Laravel dependencies
         shell: powershell
@@ -120,7 +142,7 @@ jobs:
           Write-Host ">> Done"
 
       # -------------------------
-      # 8. Optimize Laravel
+      # 10. Optimize Laravel
       # -------------------------
       - name: Optimize Laravel
         shell: powershell
@@ -144,7 +166,7 @@ jobs:
           Write-Host ">> Done"
 
       # -------------------------
-      # 9. Verify deployment
+      # 11. Verify deployment
       # -------------------------
       - name: Verify deployment
         shell: powershell
@@ -157,6 +179,14 @@ jobs:
 
           if (-not (Test-Path "$env:DEPLOY_PATH\public")) {
             throw "Laravel public folder not found in $env:DEPLOY_PATH"
+          }
+
+          if (-not (Test-Path "$env:DEPLOY_PATH\public\index.html")) {
+            throw "Frontend index.html not found in $env:DEPLOY_PATH\public"
+          }
+
+          if (-not (Test-Path "$env:DEPLOY_PATH\public\assets")) {
+            throw "Frontend assets folder not found in $env:DEPLOY_PATH\public"
           }
 
           if (-not (Test-Path "$env:DEPLOY_PATH\.env")) {

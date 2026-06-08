@@ -10,7 +10,6 @@ use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 class JwtAuthMiddleware
-/// 
 {
     public function handle(Request $request, Closure $next)
     {

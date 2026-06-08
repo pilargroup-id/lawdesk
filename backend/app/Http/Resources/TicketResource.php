@@ -19,6 +19,8 @@ class TicketResource extends JsonResource
             'user_name'      => $this->nama_pembuat,
             'support_id'     => $this->support_id,
             'support_name'   => $this->support_name ?? $this->support?->name,
+            'dept_id' => $this->dept_id,
+            'dept_name' => $this->dept_name,
             'category_id'    => $this->category_id,
             'category_name'  => $this->category?->name,
             'assets_id'      => $this->assets_id,

@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:8001/api'
+const DEFAULT_API_BASE_URL = '/api'
 const DEFAULT_TOKEN_KEY = 'access_token'
 
 function forceHttpsIfPageIsHttps(urlStr) {

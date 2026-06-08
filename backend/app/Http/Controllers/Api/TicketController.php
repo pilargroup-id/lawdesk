@@ -12,6 +12,8 @@ use App\Models\Tickets;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class TicketController extends Controller
 {
@@ -81,20 +83,32 @@ class TicketController extends Controller
         $perPage = max(1, min((int) $request->query('per_page', 20), 200));
 
         $q = Tickets::query()
-            ->select([
-                'id', 'ticket_code',
-                'user_id', 'support_id', 'support_name',
-                'category_id', 'assets_id',
-                'nama_pembuat', 'problem', 'status', 'priority',
-                'solution', 'image', 'notes',
-                'request_date', 'waiting_hour',
-                'start_date', 'end_date',
-                'time_spent', 'is_late',
-                'status_document',
-                'progres_percent',
-                'created_at', 'updated_at',
-            ])
-            ->with(['category:id,name', 'assets:id,assets_name', 'feedback']);
+        ->select([
+            'id',
+            'ticket_code',
+            'user_id',
+            'support_id',
+            'support_name',
+            'dept_id',
+            'dept_name',
+            'category_id',
+            'assets_id',
+            'nama_pembuat',
+            'problem',
+            'status',
+            'priority',
+            'solution',
+            'image',
+            'notes',
+            'request_date',
+            'waiting_hour',
+            'start_date',
+            'end_date',
+            'time_spent',
+            'is_late',
+            'created_at',
+            'updated_at',
+        ])->with(['category:id,name', 'assets:id,assets_name', 'feedback']);
 
         if ($onlyMine) {
             $q->where('user_id', \App\Helpers\AuthHelper::userId($request));
@@ -152,6 +166,36 @@ class TicketController extends Controller
         ], 200);
     }
 
+    private function getCentralUserById(?string $userId): ?array
+    {
+        if (!$userId) {
+            return null;
+        }
+
+        $centralUrl = rtrim(env('SSO_PILARGROUP_URL'), '/') . '/api/internal/directory/users';
+
+        $response = Http::withHeaders([
+            'X-Internal-Secret' => env('INTERNAL_SYNC_SECRET'),
+            'Accept' => 'application/json',
+        ])->timeout(15)->get($centralUrl, [
+            'active' => 1,
+        ]);
+
+        if (!$response->successful()) {
+            return null;
+        }
+
+        $users = $response->json('data') ?? [];
+
+        foreach ($users as $user) {
+            if (($user['id'] ?? null) === $userId) {
+                return $user;
+            }
+        }
+
+        return null;
+    }
+
     public function storeByAdmin(TicketStoreByAdminRequest $request)
     {
         $tz = $this->tz();
@@ -159,9 +203,10 @@ class TicketController extends Controller
         $data['request_date'] = $data['request_date'] ?? now($tz);
 
         if (empty($data['support_name']) && !empty($data['support_id'])) {
-            $supportUser = \App\Models\User::find($data['support_id']);
+            $supportUser = $this->getCentralUserById($data['support_id']);
+
             if ($supportUser) {
-                $data['support_name'] = $supportUser->name;
+                $data['support_name'] = $supportUser['name'] ?? null;
             }
         }
 
@@ -246,9 +291,10 @@ class TicketController extends Controller
         $data   = $request->validated();
 
         if (empty($data['support_name']) && !empty($data['support_id'])) {
-            $supportUser = \App\Models\User::find($data['support_id']);
+            $supportUser = $this->getCentralUserById($data['support_id']);
+
             if ($supportUser) {
-                $data['support_name'] = $supportUser->name;
+                $data['support_name'] = $supportUser['name'] ?? null;
             }
         }
 
@@ -432,5 +478,94 @@ class TicketController extends Controller
             'message' => 'Ticket voided successfully',
             'data'    => new TicketResource($ticket->fresh()->load(['category', 'assets'])),
         ]);
+    }
+
+    public function supports()
+    {
+        try {
+            $centralUrl = rtrim(env('SSO_PILARGROUP_URL'), '/') . '/api/internal/directory/users';
+
+            $response = Http::withHeaders([
+                'X-Internal-Secret' => env('INTERNAL_SYNC_SECRET'),
+                'Accept' => 'application/json',
+            ])->timeout(15)->get($centralUrl, [
+                'department_id' => 2,
+                'active' => 1,
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Failed to fetch supports from central server', [
+                    'url' => $centralUrl,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return response()->json([
+                    'message' => 'Failed to fetch supports from central server',
+                    'status' => $response->status(),
+                    'error' => $response->json() ?? $response->body(),
+                ], $response->status());
+            }
+
+            return response()->json([
+                'message' => 'Supports fetched successfully',
+                'data' => $response->json('data') ?? [],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Support endpoint error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'message' => 'Support endpoint error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function directoryUsers()
+    {
+        try {
+            $centralUrl = rtrim(env('SSO_PILARGROUP_URL'), '/') . '/api/internal/directory/users';
+
+            $response = Http::withHeaders([
+                'X-Internal-Secret' => env('INTERNAL_SYNC_SECRET'),
+                'Accept' => 'application/json',
+            ])->timeout(15)->get($centralUrl, [
+                'active' => 1,
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Failed to fetch directory users from central server', [
+                    'url' => $centralUrl,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return response()->json([
+                    'message' => 'Failed to fetch directory users from central server',
+                    'status' => $response->status(),
+                    'error' => $response->json() ?? $response->body(),
+                ], $response->status());
+            }
+
+            return response()->json([
+                'message' => 'Directory users fetched successfully',
+                'data' => $response->json('data') ?? [],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Directory users endpoint error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'message' => 'Directory users endpoint error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

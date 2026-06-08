@@ -84,10 +84,11 @@ function DialogExecutionTicket({
     async function fetchSupports() {
       setIsLoading(true)
       try {
-        const response = await api.get('/user/supports')
+        const response = await api.get('/support')
         setSupports(response?.data ?? [])
       } catch (err) {
         console.error('Failed to fetch supports:', err)
+        setSupports([])
       } finally {
         setIsLoading(false)
       }
@@ -141,6 +142,7 @@ function DialogExecutionTicket({
       const payload = {
         status: formData.status.toLowerCase().replace(' ', '_'),
         support_id: formData.support_id,
+        support_name: selectedSupport?.name || '',
         priority: formData.priority.toLowerCase(),
         start_date: formData.start_date,
         progres_percent: Number(formData.progres_percent),

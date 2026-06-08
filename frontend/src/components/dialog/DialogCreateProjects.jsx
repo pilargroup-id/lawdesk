@@ -36,7 +36,7 @@ function DialogCreateProjects({
     let cancelled = false
     async function fetchUsers() {
       try {
-        const response = await api.get('/user')
+        const response = await api.get('/directory/users')
         if (!cancelled) {
           const list = response?.data?.data ?? response?.data ?? []
           setUsers(list)

@@ -52,6 +52,9 @@ Route::middleware('internal.secret')->group(function () {
 */
 Route::middleware('auth.jwt')->group(function () {
 
+    Route::get('/support', [TicketController::class, 'supports']);
+    Route::get('/directory/users', [TicketController::class, 'directoryUsers']);
+
     // ===========================
     // AUTH / PROFILE
     // ===========================
@@ -107,7 +110,6 @@ Route::middleware('auth.jwt')->group(function () {
         Route::post('/department', [DepartmentController::class, 'store']);
         Route::put('/department/{id}', [DepartmentController::class, 'update']);
         Route::delete('/department/{id}', [DepartmentController::class, 'destroy']);
-        Route::get('/support', [UserController::class, 'supports']);
         Route::get('/developer', [UserController::class, 'developer']);
 
         Route::post('/user', [UserController::class, 'registerByAdmin']);

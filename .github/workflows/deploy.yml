@@ -28,7 +28,7 @@ jobs:
       - name: Create frontend production env
         shell: powershell
         run: |
-          Write-Host ">> Creating frontend .env.production for lawdesk..."
+          Write-Host ">> Creating frontend .env for lawdesk..."
 
           $envContent = @(
             "VITE_API_URL=https://lawdesk.pilargroup.id/api"
@@ -38,10 +38,10 @@ jobs:
             "VITE_CENTRAL_PORTAL_API_URL=https://pilargroup.id"
           )
 
-          $envContent | Set-Content -Path "$env:GITHUB_WORKSPACE\frontend\.env.production" -Encoding UTF8
+          $envContent | Set-Content -Path "$env:GITHUB_WORKSPACE\frontend\.env" -Encoding UTF8
 
-          Write-Host ">> Frontend .env.production created:"
-          Get-Content "$env:GITHUB_WORKSPACE\frontend\.env.production"
+          Write-Host ">> Frontend .env created:"
+          Get-Content "$env:GITHUB_WORKSPACE\frontend\.env"
 
       # -------------------------
       # 3. Install frontend dependencies

@@ -11,7 +11,7 @@ import {
 import CardStatusReqProjects from './CardStatusReqProjects.jsx'
 import DataTableReqProjects from './DataTableReqProjects.jsx'
 
-function ReqProjectsOverview({ activePage, searchQuery }) {
+function ReqProjectsOverview({ activePage, searchQuery, onLoadingChange }) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [projectRows, setProjectRows] = useState(INITIAL_PROJECT_ROWS)
@@ -61,6 +61,16 @@ function ReqProjectsOverview({ activePage, searchQuery }) {
       isMounted = false
     }
   }, [dateRange.endDate, dateRange.startDate, refreshTrigger])
+
+  const isPageLoading = isLoadingProjects && projectRows.length === 0 && !projectsError
+
+  useEffect(() => {
+    onLoadingChange?.(isPageLoading)
+
+    return () => {
+      onLoadingChange?.(false)
+    }
+  }, [isPageLoading, onLoadingChange])
 
   const statusCounts = useMemo(
     () => normalizeProjectStatusCounts(projectRows),

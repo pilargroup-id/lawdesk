@@ -72,7 +72,7 @@ export default function SliderProgressPrj({
   onChange,
   min = 0,
   max = 100,
-  step = 1,
+  step = 5,
   disabled = false,
   ...props
 }) {

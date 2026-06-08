@@ -6,6 +6,14 @@ import { getStoredUser } from '../../services/auth.js'
 import { XClose } from '../template/TemplateIcons.jsx'
 import SliderProject from '../slider/SliderProgressPrj'
 
+const SNAP_STEP = 5
+
+const snapToStep = (value, step = SNAP_STEP, min = 0, max = 100) => {
+  const numericValue = Number(value || 0)
+  const snapped = Math.round(numericValue / step) * step
+  return Math.min(max, Math.max(min, snapped))
+}
+
 function DialogProgressPrj({
   isOpen = false,
   project = null,
@@ -19,7 +27,7 @@ function DialogProgressPrj({
 
   useEffect(() => {
     if (isOpen && project) {
-      setProgressPercent(project.progressValue || 0)
+      setProgressPercent(snapToStep(project.progressValue || 0))
       setDescription('')
       setErrorMessage('')
     }
@@ -116,9 +124,9 @@ function DialogProgressPrj({
                     id="progress-percent"
                     min={0}
                     max={100}
-                    step={1}
+                    step={5}
                     value={progressPercent}
-                    onChange={(e, val) => setProgressPercent(val)}
+                    onChange={(e, val) => setProgressPercent(Array.isArray(val) ? val[0] : val)}
                     style={{ flex: 1 }}
                   />
                   <span style={{ minWidth: '3rem', textAlign: 'right', fontWeight: 600 }}>

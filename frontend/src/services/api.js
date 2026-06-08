@@ -1,20 +1,46 @@
 const DEFAULT_API_BASE_URL = '/api'
 const DEFAULT_TOKEN_KEY = 'access_token'
 
-function forceHttpsIfPageIsHttps(urlStr) {
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    return urlStr.replace(/^http:\/\//i, 'https://')
-  }
-  return urlStr
+function isBrowser() {
+  return typeof window !== 'undefined'
 }
 
-function normalizeBaseUrl(baseUrl) {
-  const normalized = String(baseUrl || DEFAULT_API_BASE_URL).replace(/\/+$/, '')
-  return forceHttpsIfPageIsHttps(normalized)
+function forceHttpsIfPageIsHttps(urlStr) {
+  if (isBrowser() && window.location.protocol === 'https:') {
+    return String(urlStr).replace(/^http:\/\//i, 'https://')
+  }
+
+  return urlStr
 }
 
 function isAbsoluteUrl(value) {
   return /^https?:\/\//i.test(String(value))
+}
+
+function getWindowOrigin() {
+  if (!isBrowser()) {
+    return 'http://localhost'
+  }
+
+  return window.location.origin
+}
+
+function normalizeBaseUrl(baseUrl) {
+  const rawBaseUrl = String(baseUrl || DEFAULT_API_BASE_URL).trim().replace(/\/+$/, '')
+
+  if (!rawBaseUrl) {
+    return `${getWindowOrigin()}${DEFAULT_API_BASE_URL}`
+  }
+
+  if (isAbsoluteUrl(rawBaseUrl)) {
+    return forceHttpsIfPageIsHttps(rawBaseUrl)
+  }
+
+  if (rawBaseUrl.startsWith('/')) {
+    return `${getWindowOrigin()}${rawBaseUrl}`
+  }
+
+  return `${getWindowOrigin()}/${rawBaseUrl}`
 }
 
 function appendQueryParams(url, params = {}) {
@@ -40,21 +66,19 @@ function appendQueryParams(url, params = {}) {
 function buildRequestUrl(endpoint, baseUrl, params) {
   const path = String(endpoint || '').trim()
   const normalizedBase = normalizeBaseUrl(baseUrl)
-  
-  // Debug logging
-  if (path === '' || !normalizedBase) {
-    console.error('API URL Construction Error:', {
+
+  if (!path) {
+    console.error('API URL Construction Error: endpoint kosong', {
       endpoint,
       baseUrl,
-      path,
       normalizedBase,
       VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
       VITE_API_URL: import.meta.env.VITE_API_URL,
     })
   }
-  
+
   const url = isAbsoluteUrl(path)
-    ? new URL(path)
+    ? new URL(forceHttpsIfPageIsHttps(path))
     : new URL(path.replace(/^\/+/, ''), `${normalizedBase}/`)
 
   appendQueryParams(url, params)
@@ -116,8 +140,10 @@ export function createApiClient({
   baseUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL,
   tokenKey = DEFAULT_TOKEN_KEY,
 } = {}) {
+  const resolvedBaseUrl = normalizeBaseUrl(baseUrl)
+
   function getToken() {
-    if (typeof window === 'undefined') {
+    if (!isBrowser()) {
       return null
     }
 
@@ -125,7 +151,7 @@ export function createApiClient({
   }
 
   function setToken(token) {
-    if (typeof window === 'undefined') {
+    if (!isBrowser()) {
       return token
     }
 
@@ -158,8 +184,9 @@ export function createApiClient({
       Accept: 'application/json',
       ...customHeaders,
     })
+
     const payload = body ?? data
-    const url = buildRequestUrl(endpoint, baseUrl, params)
+    const url = buildRequestUrl(endpoint, resolvedBaseUrl, params)
 
     if (token) {
       headers.set('Authorization', `Bearer ${token}`)
@@ -171,6 +198,7 @@ export function createApiClient({
       body: serializeBody(payload, headers),
       ...fetchOptions,
     })
+
     const responseBody = await parseResponseBody(response)
 
     if (!response.ok) {
@@ -188,13 +216,13 @@ export function createApiClient({
   }
 
   return {
-    baseUrl: normalizeBaseUrl(baseUrl),
+    baseUrl: resolvedBaseUrl,
     tokenKey,
     getToken,
     setToken,
     clearToken,
     buildUrl(endpoint, params) {
-      return buildRequestUrl(endpoint, baseUrl, params)
+      return buildRequestUrl(endpoint, resolvedBaseUrl, params)
     },
     request,
     get(endpoint, options = {}) {

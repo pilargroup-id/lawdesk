@@ -39,9 +39,23 @@ function appendQueryParams(url, params = {}) {
 
 function buildRequestUrl(endpoint, baseUrl, params) {
   const path = String(endpoint || '').trim()
+  const normalizedBase = normalizeBaseUrl(baseUrl)
+  
+  // Debug logging
+  if (path === '' || !normalizedBase) {
+    console.error('API URL Construction Error:', {
+      endpoint,
+      baseUrl,
+      path,
+      normalizedBase,
+      VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+      VITE_API_URL: import.meta.env.VITE_API_URL,
+    })
+  }
+  
   const url = isAbsoluteUrl(path)
     ? new URL(path)
-    : new URL(path.replace(/^\/+/, ''), `${normalizeBaseUrl(baseUrl)}/`)
+    : new URL(path.replace(/^\/+/, ''), `${normalizedBase}/`)
 
   appendQueryParams(url, params)
 
